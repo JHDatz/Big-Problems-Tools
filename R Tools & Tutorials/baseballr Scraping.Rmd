@@ -1,0 +1,46 @@
+---
+title: "baseballr Sample Code"
+output: html_document
+author: "Brendon Gu"
+---
+
+# Installation and Setup
+```{r}
+require(devtools)
+devtools::install_github("BillPetti/baseballr")
+require(baseballr)
+require(tidyverse)
+```
+
+# Sample scraping code - Get all pitches from 2020 World Series Game 1 
+# There should be 302 rows. 
+```{r}
+data <- scrape_statcast_savant(start_date = as.Date("2020-10-20"), end_date = as.Date("2020-10-20"))
+```
+
+# You can also specify a player ID (their MLBAM ID) and player type (batter or pitcher).  
+# This finds all pitches that Didi Gregorius put into play with 2 strikes in 2019 and overlays their locations on a stike zone. 
+```{r}
+didi_19 <- scrape_statcast_savant("2019-03-01", "2019-11-01", playerid = 544369, player_type = 'batter')
+in_play_2_strikes <- filter(didi_19, type == "X", strikes == "2")
+
+# Define Strike Zone
+TopStrikeZone <- mean(didi_19$sz_top, na.rm = TRUE)
+BotStrikeZone <- mean(didi_19$sz_bot, na.rm = TRUE)
+LeftStrikeZone <- -0.85
+RightStrikeZone <- 0.85
+StrikeZone <- data.frame(
+  x=c(LeftStrikeZone, LeftStrikeZone, RightStrikeZone, RightStrikeZone, LeftStrikeZone),
+  y=c(BotStrikeZone, TopStrikeZone, TopStrikeZone, BotStrikeZone, BotStrikeZone))
+
+# Plot
+ggplot(in_play_2_strikes, aes(plate_x, plate_z, color= events)) +
+  geom_point(size = 2) +
+  
+  ggtitle("Pitch Locations of Balls Put into Play \n with 2 Strikes, Didi Gregorius, 2019") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  labs(y="Vertical Location", x="Horizontal Location") +
+  xlim(-2, 2) + ylim(0.5, 4.5) +
+  geom_path(aes(x,y), data = StrikeZone,lwd = 1, col="black") + 
+  coord_equal()
+```
